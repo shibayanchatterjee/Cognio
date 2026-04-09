@@ -1,0 +1,41 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_POSTGREST_BASE_URL: /rest
+      VITE_POSTGREST_PROXY_TARGET: http://rest:3000
+    depends_on:
+      - rest
+
+  rest:
+    image: postgrest/postgrest:v12.2.8
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/cognio
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_SERVER_PORT: 3000
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cognio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - cognio-postgres-data:/var/lib/postgresql/data
+      - ./infra/sql:/docker-entrypoint-initdb.d
+
+volumes:
+  cognio-postgres-data:
